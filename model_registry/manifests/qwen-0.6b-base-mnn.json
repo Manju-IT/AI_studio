@@ -1,0 +1,36 @@
+{
+    "id": "qwen3-tts-0.6b-base-mnn",
+    "display_name": "Qwen3-TTS 0.6B Base (MNN CPU)",
+    "architecture": "qwen3_tts",
+    "parameters_billions": 0.6,
+    "model_type": "base",
+    "runtime": "qwen_mnn",
+    "quantization": "fp16",
+    "device": "cpu",
+    "model_path": "storage/models/qwen3-tts-0.6b-base-mnn",
+    "capabilities": [
+        "text_to_speech",
+        "voice_cloning",
+        "multilingual"
+    ],
+    "languages": [
+        "zh",
+        "en",
+        "ja",
+        "ko",
+        "de",
+        "fr",
+        "ru",
+        "pt",
+        "es",
+        "it"
+    ],
+    "license": "Apache-2.0",
+    "source_repository": "https://modelscope.cn/models/Qwen/Qwen3-TTS-12Hz-0.6B-Base",
+    "memory_estimate_mb": 2200,
+    "max_concurrent_jobs": 1,
+    "extra": {
+        "threads": 6,
+        "default_voice_dir": "voice_priya"
+    }
+}

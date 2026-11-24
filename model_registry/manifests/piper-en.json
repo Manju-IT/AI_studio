@@ -1,0 +1,27 @@
+{
+    "id": "piper-en-us",
+    "display_name": "Piper English (US)",
+    "architecture": "piper",
+    "parameters_billions": 0.02,
+    "model_type": "lightweight",
+    "runtime": "piper",
+    "quantization": "fp16",
+    "device": "cpu",
+    "model_path": "storage/models/piper/en_US-amy-medium",
+    "capabilities": [
+        "text_to_speech"
+    ],
+    "languages": [
+        "en"
+    ],
+    "license": "MIT",
+    "source_repository": "https://github.com/rhasspy/piper",
+    "memory_estimate_mb": 120,
+    "max_concurrent_jobs": 1,
+    "extra": {
+        "onnx_file": "en_US-amy-medium.onnx",
+        "speakers": [
+            "default"
+        ]
+    }
+}

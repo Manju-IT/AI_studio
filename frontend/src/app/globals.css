@@ -1,0 +1,564 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * AI Voice Studio — Warm Light Design System
+ * Compatible with the existing Tailwind RGB tokens.
+ */
+
+:root {
+    color-scheme: light;
+
+    /* Canvas and surfaces */
+    --color-bg: 248 247 244;
+    --color-bg-muted: 255 255 255;
+    --color-bg-elevated: 250 249 247;
+
+    /* Typography */
+    --color-fg: 41 39 35;
+    --color-fg-muted: 111 106 99;
+    --color-fg-subtle: 139 132 123;
+
+    /* Borders */
+    --color-border: 231 227 220;
+    --color-border-strong: 206 199 188;
+
+    /* Brand accent — warm amber */
+    --color-accent: 217 164 97;
+    --color-accent-hover: 197 140 68;
+
+    /* Semantic colors */
+    --color-success: 48 135 89;
+    --color-warning: 165 111 34;
+    --color-danger: 193 70 64;
+
+    /* Secondary surfaces */
+    --surface-overlay: 255 255 255;
+    --surface-input: 255 255 255;
+
+    --radius-card: 14px;
+    --radius-control: 9px;
+    --transition-ui: 160ms ease;
+}
+
+@layer base {
+
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+    }
+
+    html {
+        min-height: 100%;
+        background: rgb(var(--color-bg));
+        scroll-behavior: smooth;
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        min-height: 100vh;
+        margin: 0;
+        background: rgb(var(--color-bg));
+        color: rgb(var(--color-fg));
+        font-family:
+            Inter,
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            sans-serif;
+        font-size: 14px;
+        line-height: 1.55;
+        letter-spacing: -0.01em;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        margin: 0;
+        color: rgb(var(--color-fg));
+        font-weight: 600;
+        line-height: 1.3;
+        letter-spacing: -0.035em;
+    }
+
+    p {
+        overflow-wrap: break-word;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+        font: inherit;
+    }
+
+    button {
+        cursor: pointer;
+        transition:
+            background-color var(--transition-ui),
+            border-color var(--transition-ui),
+            color var(--transition-ui),
+            box-shadow var(--transition-ui);
+    }
+
+    button:disabled {
+        cursor: not-allowed;
+    }
+
+    input,
+    textarea,
+    select {
+        color: rgb(var(--color-fg));
+        accent-color: rgb(var(--color-accent));
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+        color: rgb(var(--color-fg-subtle));
+        opacity: 1;
+    }
+
+    select option {
+        background: rgb(var(--color-bg-muted));
+        color: rgb(var(--color-fg));
+    }
+
+    :where(button,
+        a,
+        input,
+        textarea,
+        select,
+        [tabindex]):focus-visible {
+        outline: 2px solid rgb(var(--color-accent-hover));
+        outline-offset: 3px;
+    }
+
+    a {
+        text-underline-offset: 3px;
+    }
+
+    ::selection {
+        background: rgb(var(--color-accent) / 0.25);
+        color: rgb(var(--color-fg));
+    }
+
+    hr {
+        border: 0;
+        border-top: 1px solid rgb(var(--color-border));
+    }
+
+    code,
+    pre,
+    kbd {
+        font-family:
+            "Cascadia Code",
+            "JetBrains Mono",
+            Consolas,
+            monospace;
+    }
+
+    table {
+        border-collapse: collapse;
+        font-variant-numeric: tabular-nums;
+    }
+
+    th {
+        font-weight: 600;
+    }
+
+    svg {
+        flex-shrink: 0;
+    }
+}
+
+@layer components {
+    .studio-panel {
+        border: 1px solid rgb(var(--color-border));
+        border-radius: var(--radius-card);
+        background: rgb(var(--color-bg-muted));
+        box-shadow: 0 2px 12px rgb(50 40 25 / 0.025);
+    }
+
+    .studio-panel-elevated {
+        border: 1px solid rgb(var(--color-border));
+        border-radius: var(--radius-card);
+        background: rgb(var(--color-bg-elevated));
+    }
+
+    .studio-input {
+        width: 100%;
+        min-height: 40px;
+        padding: 9px 12px;
+        border: 1px solid rgb(var(--color-border-strong));
+        border-radius: var(--radius-control);
+        background: rgb(var(--surface-input));
+        color: rgb(var(--color-fg));
+        transition:
+            border-color var(--transition-ui),
+            box-shadow var(--transition-ui);
+    }
+
+    .studio-input:hover:not(:disabled) {
+        border-color: rgb(var(--color-accent));
+    }
+
+    .studio-input:focus {
+        border-color: rgb(var(--color-accent-hover));
+        outline: none;
+        box-shadow:
+            0 0 0 3px rgb(var(--color-accent) / 0.16);
+    }
+
+    .studio-input:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    .studio-section-label {
+        color: rgb(var(--color-fg-subtle));
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+    }
+
+    .studio-divider {
+        height: 1px;
+        background: rgb(var(--color-border));
+    }
+
+    .studio-skeleton {
+        border-radius: 6px;
+        background: rgb(var(--color-bg-elevated));
+        animation: studio-pulse 1.7s ease-in-out infinite;
+    }
+
+    .studio-page {
+        width: 100%;
+        min-width: 0;
+        max-width: 1440px;
+        margin-inline: auto;
+        padding-bottom: 48px;
+    }
+
+    .studio-heading {
+        font-size: clamp(26px, 3vw, 34px);
+        font-weight: 600;
+        letter-spacing: -0.045em;
+    }
+
+    .studio-eyebrow {
+        color: rgb(157 109 53);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+    }
+
+    .studio-button-primary {
+        display: inline-flex;
+        min-height: 40px;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 9px 16px;
+        border: 1px solid transparent;
+        border-radius: 9px;
+        background: rgb(var(--color-accent));
+        color: #29221a;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .studio-button-primary:hover:not(:disabled) {
+        background: rgb(var(--color-accent-hover));
+    }
+
+    .studio-button-primary:disabled {
+        opacity: 0.45;
+    }
+
+    .studio-button-secondary {
+        display: inline-flex;
+        min-height: 40px;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 9px 14px;
+        border: 1px solid rgb(var(--color-border));
+        border-radius: 9px;
+        background: rgb(var(--color-bg-muted));
+        color: rgb(var(--color-fg));
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .studio-button-secondary:hover:not(:disabled) {
+        border-color: rgb(var(--color-border-strong));
+        background: rgb(var(--color-bg-elevated));
+    }
+
+    .studio-button-secondary:disabled {
+        opacity: 0.45;
+    }
+
+    .studio-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+        font-size: 13px;
+    }
+
+    .studio-table thead {
+        background: rgb(var(--color-bg-elevated));
+        color: rgb(var(--color-fg-muted));
+    }
+
+    .studio-table th {
+        padding: 13px 16px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.045em;
+    }
+
+    .studio-table td {
+        padding: 14px 16px;
+        border-top: 1px solid rgb(var(--color-border));
+    }
+
+    .studio-table tbody tr:hover {
+        background: rgb(var(--color-bg-elevated));
+    }
+}
+
+@keyframes studio-pulse {
+
+    0%,
+    100% {
+        opacity: 0.4;
+    }
+
+    50% {
+        opacity: 0.8;
+    }
+}
+
+/* Scrollbars */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--color-border-strong)) transparent;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    border: 2px solid rgb(var(--color-bg));
+    border-radius: 999px;
+    background: rgb(var(--color-border-strong));
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--color-fg-subtle));
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+
+/* AI Voice Studio — light-theme compatibility layer for Models, Benchmarks and Jobs.
+   Add className="studio-light-tools" to the outer <main> of each of those pages.
+   Append this file's contents to globals.css, AFTER existing Tailwind layers. */
+
+.studio-light-tools {
+    color: rgb(var(--color-fg)) !important;
+}
+
+.studio-light-tools h1,
+.studio-light-tools h2,
+.studio-light-tools h3,
+.studio-light-tools h4 {
+    color: rgb(var(--color-fg)) !important;
+}
+
+/* Convert legacy dark card surfaces, including nested details and toolbars. */
+.studio-light-tools :is([class*="bg-[#171b23]"], [class*="bg-[#141820]"],
+    [class*="bg-[#15181e]"], [class*="bg-[#171a20]"],
+    [class*="bg-[#12151b]"], [class*="bg-[#222630]"],
+    [class*="bg-slate-800"], [class*="bg-slate-700"],
+    [class*="bg-[#171b23]/60"]) {
+    background-color: rgb(var(--color-bg-muted)) !important;
+}
+
+/* Benchmark page legacy dark controls and metric panels. */
+.studio-light-tools [class*="bg-bg-muted"] {
+    background-color: rgb(var(--color-bg-muted)) !important;
+}
+
+.studio-light-tools [class*="border-border"] {
+    border-color: rgb(var(--color-border)) !important;
+}
+
+.studio-light-tools :is([class*="border-slate-800"], [class*="border-slate-700"],
+    [class*="border-slate-600"], [class*="border-[#30343e]"],
+    [class*="border-[#2c303a]"], [class*="border-[#343947]"],
+    [class*="border-[#363b47]"]) {
+    border-color: rgb(var(--color-border)) !important;
+}
+
+/* Neutral typography. Keep colored status indicators and alerts intact. */
+.studio-light-tools :is([class*="text-slate-100"], [class*="text-slate-200"],
+    [class*="text-slate-300"], [class*="text-white"],
+    [class*="text-[#f6f7fa]"], [class*="text-[#f5f6f9]"],
+    [class*="text-[#eceef3]"], [class*="text-[#e9ebf1]"],
+    [class*="text-[#e4e7ee]"], [class*="text-[#e1e4ec]"],
+    [class*="text-[#dfe2e9]"], [class*="text-[#d5d9e2]"],
+    [class*="text-[#c9ced8]"], [class*="text-[#c5cad4]"]) {
+    color: rgb(var(--color-fg)) !important;
+}
+
+.studio-light-tools :is([class*="text-slate-400"], [class*="text-slate-500"],
+    [class*="text-slate-600"], [class*="text-[#9299a8]"],
+    [class*="text-[#9da4b2]"], [class*="text-[#a1a8b5]"],
+    [class*="text-[#81899a]"], [class*="text-[#929aaa]"],
+    [class*="text-[#969eac]"], [class*="text-[#a3aab8]"],
+    [class*="text-[#7d8697]"], [class*="text-[#8e96a6]"],
+    [class*="text-[#a5acba]"], [class*="text-[#919aaa]"],
+    [class*="text-[#a7afbc]"], [class*="text-[#778091]"],
+    [class*="text-[#858da0]"], [class*="text-[#8c94a4]"],
+    [class*="text-[#a5acb9]"], [class*="text-[#a1a8b6]"]) {
+    color: rgb(var(--color-fg-muted)) !important;
+}
+
+/* Dark hardcoded backgrounds used by metric cards and footer bars. */
+.studio-light-tools [class*="bg-[#171b23]"],
+.studio-light-tools [class*="bg-[#141820]"],
+.studio-light-tools [class*="bg-[#15181e]"],
+.studio-light-tools [class*="bg-[#171a20]"],
+.studio-light-tools [class*="bg-[#12151b]"] {
+    background: rgb(var(--color-bg-muted)) !important;
+}
+
+.studio-light-tools article,
+.studio-light-tools section[class*="rounded"],
+.studio-light-tools div[class*="rounded-xl"][class*="border"] {
+    box-shadow: 0 2px 12px rgb(50 40 25 / 0.025);
+}
+
+/* Accessible controls, including legacy dark search boxes. */
+.studio-light-tools input:not([type="checkbox"]),
+.studio-light-tools select {
+    background: rgb(var(--surface-input)) !important;
+    color: rgb(var(--color-fg)) !important;
+    border-color: rgb(var(--color-border-strong)) !important;
+}
+
+.studio-light-tools input::placeholder {
+    color: rgb(var(--color-fg-subtle)) !important;
+}
+
+.studio-light-tools button:focus-visible,
+.studio-light-tools input:focus-visible,
+.studio-light-tools select:focus-visible {
+    outline: 2px solid rgb(var(--color-accent-hover));
+    outline-offset: 2px;
+}
+
+/* Dark filter bars and selected tabs become warm-light. */
+.studio-light-tools button[aria-pressed="true"] {
+    background-color: rgb(var(--color-accent) / 0.18) !important;
+    border-color: rgb(var(--color-accent) / 0.65) !important;
+    color: rgb(var(--color-fg)) !important;
+}
+
+.studio-light-tools button[aria-pressed="false"] {
+    color: rgb(var(--color-fg-muted)) !important;
+}
+
+/* Benchmark primary action and Models load button. */
+.studio-light-tools button[class*="bg-indigo-600"] {
+    background: rgb(var(--color-accent)) !important;
+    color: rgb(var(--color-fg)) !important;
+}
+
+.studio-light-tools button[class*="bg-indigo-600"]:hover:not(:disabled) {
+    background: rgb(var(--color-accent-hover)) !important;
+}
+
+/* Table headers, rows, and hover treatments. */
+.studio-light-tools thead {
+    background: rgb(var(--color-bg-elevated)) !important;
+}
+
+.studio-light-tools th {
+    color: rgb(var(--color-fg-muted)) !important;
+}
+
+.studio-light-tools tbody tr:hover {
+    background: rgb(var(--color-bg-elevated)) !important;
+}
+
+/* Preserve success/warning/error distinctions with legible light-mode colors. */
+.studio-light-tools [class*="text-emerald-300"],
+.studio-light-tools [class*="text-emerald-400"] {
+    color: rgb(var(--color-success)) !important;
+}
+
+.studio-light-tools [class*="text-rose-200"],
+.studio-light-tools [class*="text-rose-300"],
+.studio-light-tools [class*="text-rose-400"] {
+    color: rgb(var(--color-danger)) !important;
+}
+
+.studio-light-tools [class*="text-amber-300"] {
+    color: rgb(var(--color-warning)) !important;
+}
+
+.studio-light-tools [class*="text-sky-300"] {
+    color: rgb(40 105 157) !important;
+}
+
+.studio-light-tools [class*="text-indigo-300"],
+.studio-light-tools [class*="text-indigo-400"] {
+    color: rgb(157 109 53) !important;
+}
+
+/* Existing colored dark-mode alerts become pale translucent alerts. */
+.studio-light-tools [role="alert"] {
+    background: rgb(var(--color-danger) / 0.055) !important;
+}
+
+.studio-light-tools [role="status"] {
+    background: rgb(var(--color-success) / 0.055) !important;
+}
+
+/* Benchmark legacy dark test-sample tile, which has a hardcoded hex background. */
+.studio-light-tools [class*="bg-[#7569e9]/15"] {
+    background: rgb(var(--color-accent) / 0.12) !important;
+}
+
+.studio-light-tools [class*="bg-[#7569e9]/[0.055]"] {
+    background: rgb(var(--color-accent) / 0.06) !important;
+}

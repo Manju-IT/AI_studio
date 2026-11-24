@@ -1,0 +1,31 @@
+{
+    "id": "kokoro-82m-q8",
+    "display_name": "Kokoro-82M",
+    "architecture": "kokoro",
+    "parameters_billions": 0.082,
+    "model_type": "lightweight",
+    "runtime": "kokoro",
+    "quantization": "q8",
+    "device": "cpu",
+    "model_path": "storage/models/kokoro-82m",
+    "capabilities": [
+        "text_to_speech",
+        "multilingual"
+    ],
+    "languages": [
+        "en",
+        "es",
+        "fr",
+        "de",
+        "it",
+        "pt"
+    ],
+    "license": "Apache-2.0",
+    "source_repository": "https://huggingface.co/hexgrad/Kokoro-82M",
+    "memory_estimate_mb": 350,
+    "max_concurrent_jobs": 1,
+    "extra": {
+        "default_voice": "af_heart",
+        "quality": "q8"
+    }
+}

@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+.next/
+out/
+.turbo/
+
+# Environment
+.env
+.env.local
+!.env.example
+
+# Storage (never commit weights or generated audio)
+storage/
+!storage/.gitkeep
+
+# Models
+models/
+*.gguf
+*.mnn
+*.onnx
+*.safetensors
+*.bin
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log
+
+# Alembic
+backend/alembic/versions/*.py
+!backend/alembic/versions/.gitkeep
