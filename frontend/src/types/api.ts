@@ -25,7 +25,11 @@ export interface ModelDefinitionOut {
     capabilities: Record<string, unknown>
 }
 
+export interface GenerationParameter {
+    key: string; label: string; default: number | null; minimum: number; maximum: number; step: number; integer: boolean
+}
 export interface ModelInstallationOut {
+    generation_contract?: { available: boolean; parameters: GenerationParameter[] }
     id: string
     definition_id: string
     manifest_id: string
@@ -53,6 +57,8 @@ export interface VoiceSampleOut {
 }
 
 export interface VoiceOut {
+    synthesis_ready?: boolean
+    model_installation_id?: string | null
     id: string
     name: string
     language: string

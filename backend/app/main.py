@@ -7,7 +7,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.v1 import audio, auth, generations, jobs, models, projects, system, voices
+from app.api.v1 import audio, auth, generations, jobs, models, projects, system, voices, transcriptions
+from app.api.v1 import developer, queue
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.core.logging import configure_logging, get_logger
@@ -71,6 +72,11 @@ def create_app() -> FastAPI:
     app.include_router(audio.router, prefix="/api/v1/audio", tags=["audio"])
     app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
     app.include_router(system.router, prefix="/api/v1/system", tags=["system"])
+
+    app.include_router(transcriptions.router, prefix="/api/v1/transcriptions", tags=["transcriptions"])
+    app.include_router(queue.router, prefix="/api/v1/queue", tags=["queue"])
+    app.include_router(developer.router, prefix="/api/v1/developer", tags=["developer keys"])
+    app.include_router(developer.external, prefix="/api/v1/external", tags=["external API"])
 
     @app.get("/api/health", tags=["system"])
     async def health() -> dict[str, str]:

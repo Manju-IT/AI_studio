@@ -27,6 +27,8 @@ class VoiceAuthorizationOut(ORMModel):
 
 
 class VoiceOut(ORMModel):
+    synthesis_ready: bool = False
+    model_installation_id: uuid.UUID | None = None
     id: uuid.UUID
     name: str
     language: str

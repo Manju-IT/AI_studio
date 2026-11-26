@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import uuid
+import asyncio
+from inference.voice_assets import ready, profile_path
+from app.services.jobs.local_queue import extraction_path, load, save
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import select, or_
+from sqlalchemy.orm import selectinload
+from app.core.exceptions import ForbiddenError, AppError, ErrorCode
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import current_user, db_session
@@ -34,29 +39,31 @@ async def _default_workspace(session: AsyncSession) -> Workspace:
 @router.get("", response_model=list[VoiceOut])
 async def list_voices(
     language: str | None = None,
-    _: User = Depends(current_user),
+    user: User = Depends(current_user),
     session: AsyncSession = Depends(db_session),
 ) -> list[VoiceOut]:
-    stmt = select(Voice).where(Voice.is_active.is_(True))
+    stmt = select(Voice).options(selectinload(Voice.samples)).where(Voice.is_active.is_(True), or_(Voice.owner_id == user.id, (Voice.owner_id.is_(None) & (Voice.source == "builtin"))))
     if language:
         stmt = stmt.where(Voice.language == language.lower())
     rows = (await session.scalars(stmt.order_by(Voice.name))).all()
-    return [VoiceOut.model_validate(r) for r in rows]
+    return [VoiceOut.model_validate(r).model_copy(update={"synthesis_ready": ready(r)}) for r in rows]
 
 
 @router.post("/{voice_id}/favorite", response_model=VoiceOut)
 async def favorite_voice(
     voice_id: uuid.UUID,
     payload: VoiceFavoriteRequest,
-    _: User = Depends(current_user),
+    user: User = Depends(current_user),
     session: AsyncSession = Depends(db_session),
 ) -> VoiceOut:
-    voice = await session.scalar(select(Voice).where(Voice.id == voice_id))
+    voice = await session.scalar(select(Voice).options(selectinload(Voice.samples)).where(Voice.id == voice_id).with_for_update())
     if voice is None:
         raise NotFoundError("Voice", str(voice_id))
+    if voice.owner_id != user.id:
+        raise ForbiddenError("Only the owner may change this voice.")
     voice.is_favorite = payload.is_favorite
     await session.commit()
-    await session.refresh(voice)
+    await session.refresh(voice, attribute_names=["samples"])
     return VoiceOut.model_validate(voice)
 
 
@@ -66,10 +73,10 @@ async def delete_voice(
     user: User = Depends(current_user),
     session: AsyncSession = Depends(db_session),
 ) -> None:
-    voice = await session.scalar(select(Voice).where(Voice.id == voice_id))
+    voice = await session.scalar(select(Voice).options(selectinload(Voice.samples)).where(Voice.id == voice_id).with_for_update())
     if voice is None:
         raise NotFoundError("Voice", str(voice_id))
-    if voice.owner_id is not None and voice.owner_id != user.id and user.role != "admin":
+    if voice.owner_id != user.id and user.role != "admin":
         from app.core.exceptions import ForbiddenError
 
         raise ForbiddenError("You do not own this voice.")
@@ -86,7 +93,7 @@ async def create_cloned_voice(
 ) -> VoiceOut:
     """Register the consent record and a cloned-voice row.
 
-    Actual model-side extraction (Qwen MNN `extract_voice`) is an admin step.
+    Model-side extraction is queued separately after reference upload.
     This endpoint does not fabricate a cloned voice; it records the user's
     intent and authorisation, and prepares the voice for reference upload.
     """
@@ -101,12 +108,15 @@ async def create_cloned_voice(
         )
         if installation is None:
             raise NotFoundError("ModelInstallation", str(payload.model_installation_id))
+        await session.refresh(installation, attribute_names=["definition"])
         caps = installation.definition.capabilities or {}
-        if not caps.get("voice_cloning"):
+        if installation.runtime != "qwen_mnn" or not caps.get("voice_cloning"):
             raise CapabilityUnsupportedError(
                 "voice_cloning", installation.manifest_id
             )
 
+    if payload.model_installation_id is None:
+        raise AppError(ErrorCode.VALIDATION_ERROR, "Select a Qwen model.", status_code=422)
     voice = Voice(
         workspace_id=workspace.id,
         owner_id=user.id,
@@ -133,7 +143,7 @@ async def create_cloned_voice(
     session.add(authorization)
 
     await session.commit()
-    await session.refresh(voice)
+    await session.refresh(voice, attribute_names=["samples"])
     return VoiceOut.model_validate(voice)
 
 
@@ -148,9 +158,11 @@ async def upload_reference(
     user: User = Depends(current_user),
     session: AsyncSession = Depends(db_session),
 ) -> VoiceSampleOut:
-    voice = await session.scalar(select(Voice).where(Voice.id == voice_id))
+    voice = await session.scalar(select(Voice).options(selectinload(Voice.samples)).where(Voice.id == voice_id).with_for_update())
     if voice is None:
         raise NotFoundError("Voice", str(voice_id))
+    if voice.owner_id != user.id or not voice.is_active:
+        raise ForbiddenError("Voice unavailable.")
     if voice.source != "cloned":
         from app.core.exceptions import AppError, ErrorCode
 
@@ -160,6 +172,14 @@ async def upload_reference(
             status_code=422,
         )
 
+    authorization = await session.scalar(select(VoiceAuthorization).where(VoiceAuthorization.voice_id == voice.id))
+    if authorization is None:
+        raise ForbiddenError("Speaker authorization is required.")
+    job_path = extraction_path(user.id, voice.id)
+    if job_path.exists() and load(job_path)["status"] in ("queued", "processing"):
+        raise AppError(ErrorCode.VALIDATION_ERROR, "Extraction is active.", status_code=409)
+    if profile_path(voice.id).exists():
+        raise AppError(ErrorCode.VALIDATION_ERROR, "Ready profiles are immutable; create a new voice.", status_code=409)
     info = await save_reference_audio(file, voice_id=voice.id)
 
     sample = VoiceSample(
@@ -192,18 +212,40 @@ async def create_designed_voice(
     records the prompt. The Studio will refuse to generate audio for this voice
     until a capable model is loaded.
     """
-    workspace = await _default_workspace(session)
+    raise CapabilityUnsupportedError("voice_design", "No integrated runtime")
 
-    voice = Voice(
-        workspace_id=workspace.id,
-        owner_id=user.id,
-        name=payload.name,
-        language=payload.language,
-        source="designed",
-        description=payload.description,
-        design_prompt=payload.description,
-    )
-    session.add(voice)
-    await session.commit()
-    await session.refresh(voice)
-    return VoiceOut.model_validate(voice)
+
+@router.post("/{voice_id}/extract", status_code=202)
+async def extract_profile(voice_id: uuid.UUID, user: User = Depends(current_user), session: AsyncSession = Depends(db_session)):
+    voice = await session.scalar(select(Voice).options(selectinload(Voice.samples)).where(Voice.id == voice_id, Voice.owner_id == user.id, Voice.is_active.is_(True)).with_for_update())
+    if voice is None or voice.source != "cloned": raise NotFoundError("Voice", str(voice_id))
+    model = await session.get(ModelInstallation, voice.model_installation_id) if voice.model_installation_id else None
+    auth = await session.scalar(select(VoiceAuthorization).where(VoiceAuthorization.voice_id == voice.id))
+    samples = sorted((s for s in voice.samples if s.is_reference), key=lambda s: s.created_at, reverse=True)
+    if not model or model.runtime != "qwen_mnn" or not auth or not samples:
+        raise AppError(ErrorCode.VALIDATION_ERROR, "Qwen model, consent and reference required.", status_code=422)
+    transcript = (auth.consent_metadata or {}).get("reference_text", "").strip()
+    if not transcript: raise AppError(ErrorCode.VALIDATION_ERROR, "Reference transcript required.", status_code=422)
+    path = extraction_path(user.id, voice.id)
+    if ready(voice):
+        return {"status": "completed", "error": None}
+    from app.services.jobs.worker_lock import worker_lock
+    with worker_lock(path.with_suffix('.lock')) as acquired:
+        if not acquired:
+            raise AppError(ErrorCode.VALIDATION_ERROR, "Job is busy; retry shortly.", status_code=409)
+        if path.exists():
+            previous = load(path)
+            if previous["status"] in ("queued", "processing"):
+                return {"status": previous["status"], "error": None}
+        save(path, dict(kind="extract", voice_id=str(voice.id), owner_id=str(user.id), status="queued", error=None))
+    return {"status": "queued", "error": None}
+
+
+@router.get("/{voice_id}/extract")
+async def extraction_status(voice_id: uuid.UUID, user: User = Depends(current_user), session: AsyncSession = Depends(db_session)):
+    voice = await session.scalar(select(Voice).where(Voice.id == voice_id, Voice.owner_id == user.id, Voice.is_active.is_(True)))
+    if voice is None: raise NotFoundError("Voice", str(voice_id))
+    path = extraction_path(user.id, voice_id)
+    if ready(voice): return {"status": "completed", "error": None}
+    data = load(path) if path.exists() else {"status": "pending", "error": None}
+    return {"status": data["status"], "error": data.get("error")}

@@ -134,7 +134,8 @@ export default function AdminUsersPage() {
     const isCreating = busy === 'create'
 
     return (
-        <main className="studio-light-tools mx-auto w-full max-w-7xl space-y-6 px-4 py-6 text-slate-900 sm:px-6 lg:px-8">
+        <main className="studio-light-tools w-full min-h-screen space-y-6 px-0 py-6 text-slate-900">
+
             <header className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <p className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500"><Shield className="h-3.5 w-3.5" /> Administration <span className="text-slate-300">/</span> Access control</p>
@@ -155,16 +156,18 @@ export default function AdminUsersPage() {
                 <SummaryCard label="Administrators" value={adminCount} icon={Shield} loading={loading} />
             </section>
 
-            {showForm && <section className={`${panel} p-5 sm:p-6`}>
-                <div className="mb-5"><h2 className="text-base font-semibold text-slate-900">Create an account</h2><p className="mt-1 text-xs leading-5 text-slate-500">The account is created immediately with an initial password. No email invitation is sent.</p></div>
-                <form onSubmit={createUser} className="grid gap-4 sm:grid-cols-2">
-                    <label className="space-y-1.5 text-xs font-semibold text-slate-700">Display name<input required maxLength={200} autoComplete="off" disabled={busy !== null} className={field} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Alex Morgan" /></label>
-                    <label className="space-y-1.5 text-xs font-semibold text-slate-700">Email address<input required type="email" autoComplete="off" disabled={busy !== null} className={field} value={email} onChange={e => setEmail(e.target.value)} placeholder="alex@company.com" /></label>
-                    <label className="space-y-1.5 text-xs font-semibold text-slate-700">Initial password<div className="relative"><input required minLength={10} autoComplete="new-password" disabled={busy !== null} type={showPassword ? 'text' : 'password'} className={`${field} pr-11`} value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 10 characters" /><button type="button" disabled={busy !== null} aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></label>
-                    <label className="space-y-1.5 text-xs font-semibold text-slate-700">Workspace role<select className={field} disabled={busy !== null} value={role} onChange={e => setRole(e.target.value as Role)}><option value="member">Member — standard access</option><option value="admin">Administrator — account management</option></select></label>
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#f0ede8] pt-4 sm:col-span-2"><p className="max-w-md text-xs leading-5 text-slate-500">Use a unique password and share it securely with the account owner.</p><button type="submit" disabled={busy !== null || password.length < 10 || !name.trim() || !email.trim()} className={primary}>{isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}{isCreating ? 'Creating account…' : 'Create account'}</button></div>
-                </form>
-            </section>}
+            {
+                showForm && <section className={`${panel} p-5 sm:p-6`}>
+                    <div className="mb-5"><h2 className="text-base font-semibold text-slate-900">Create an account</h2><p className="mt-1 text-xs leading-5 text-slate-500">The account is created immediately with an initial password. No email invitation is sent.</p></div>
+                    <form onSubmit={createUser} className="grid gap-4 sm:grid-cols-2">
+                        <label className="space-y-1.5 text-xs font-semibold text-slate-700">Display name<input required maxLength={200} autoComplete="off" disabled={busy !== null} className={field} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Alex Morgan" /></label>
+                        <label className="space-y-1.5 text-xs font-semibold text-slate-700">Email address<input required type="email" autoComplete="off" disabled={busy !== null} className={field} value={email} onChange={e => setEmail(e.target.value)} placeholder="alex@company.com" /></label>
+                        <label className="space-y-1.5 text-xs font-semibold text-slate-700">Initial password<div className="relative"><input required minLength={10} autoComplete="new-password" disabled={busy !== null} type={showPassword ? 'text' : 'password'} className={`${field} pr-11`} value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 10 characters" /><button type="button" disabled={busy !== null} aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></label>
+                        <label className="space-y-1.5 text-xs font-semibold text-slate-700">Workspace role<select className={field} disabled={busy !== null} value={role} onChange={e => setRole(e.target.value as Role)}><option value="member">Member — standard access</option><option value="admin">Administrator — account management</option></select></label>
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#f0ede8] pt-4 sm:col-span-2"><p className="max-w-md text-xs leading-5 text-slate-500">Use a unique password and share it securely with the account owner.</p><button type="submit" disabled={busy !== null || password.length < 10 || !name.trim() || !email.trim()} className={primary}>{isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}{isCreating ? 'Creating account…' : 'Create account'}</button></div>
+                    </form>
+                </section>
+            }
 
             <section className={`${panel} overflow-hidden`}>
                 <div className="flex flex-col gap-4 border-b border-[#eeeae5] p-5 lg:flex-row lg:items-center lg:justify-between">
@@ -196,14 +199,16 @@ export default function AdminUsersPage() {
                 </div>
             </section>
 
-            {target && confirm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[2px]" onMouseDown={e => { if (e.target === e.currentTarget && !operationLock.current) setConfirm(null) }}>
-                <div role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-description" className="w-full max-w-md rounded-2xl border border-[#e9e5df] bg-white p-6 shadow-2xl">
-                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50"><Shield className="h-5 w-5 text-amber-700" /></div>
-                    <h2 id="confirm-title" className="text-lg font-semibold text-slate-900">Confirm account change</h2>
-                    <p id="confirm-description" className="mt-2 text-sm leading-6 text-slate-600">{confirm.kind === 'role' ? `Change ${target.display_name}'s role to ${target.role === 'admin' ? 'Member' : 'Administrator'}? This changes their workspace permissions.` : `${target.is_active ? 'Deactivate' : 'Reactivate'} ${target.display_name}'s account? ${target.is_active ? 'They will lose access to the workspace.' : 'They will regain access based on their role.'}`}</p>
-                    <div className="mt-6 flex justify-end gap-2"><button type="button" className={secondary} disabled={busy !== null} onClick={() => setConfirm(null)}>Cancel</button><button type="button" onClick={() => void applyChange()} disabled={busy !== null} className={primary}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}Confirm change</button></div>
+            {
+                target && confirm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[2px]" onMouseDown={e => { if (e.target === e.currentTarget && !operationLock.current) setConfirm(null) }}>
+                    <div role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-description" className="w-full max-w-md rounded-2xl border border-[#e9e5df] bg-white p-6 shadow-2xl">
+                        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50"><Shield className="h-5 w-5 text-amber-700" /></div>
+                        <h2 id="confirm-title" className="text-lg font-semibold text-slate-900">Confirm account change</h2>
+                        <p id="confirm-description" className="mt-2 text-sm leading-6 text-slate-600">{confirm.kind === 'role' ? `Change ${target.display_name}'s role to ${target.role === 'admin' ? 'Member' : 'Administrator'}? This changes their workspace permissions.` : `${target.is_active ? 'Deactivate' : 'Reactivate'} ${target.display_name}'s account? ${target.is_active ? 'They will lose access to the workspace.' : 'They will regain access based on their role.'}`}</p>
+                        <div className="mt-6 flex justify-end gap-2"><button type="button" className={secondary} disabled={busy !== null} onClick={() => setConfirm(null)}>Cancel</button><button type="button" onClick={() => void applyChange()} disabled={busy !== null} className={primary}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}Confirm change</button></div>
+                    </div>
                 </div>
-            </div>}
-        </main>
+            }
+        </main >
     )
 }

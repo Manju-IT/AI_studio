@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import uuid
+from inference.voice_assets import usable
 
 from fastapi import APIRouter, Depends, status
 
@@ -14,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import current_user, db_session
 from app.core.exceptions import NotFoundError, AppError, ErrorCode
 from app.models.job import GenerationJob
+from app.models.project import Project
 from app.models.model import ModelInstallation
 from app.models.voice import Voice
 from app.models.user import User, Workspace
@@ -63,11 +65,17 @@ async def submit_generation(
         raise AppError(ErrorCode.VALIDATION_ERROR, str(exc), status_code=422) from exc
     if payload.voice_id:
         voice = await session.get(Voice, payload.voice_id)
-        if voice is None or not voice.is_active or voice.language.lower() != payload.language.lower() or voice.model_installation_id != model.id or model.runtime == "piper":
+        if voice is None or not usable(voice, user.id, model) or voice.owner_id not in (None, user.id) or not voice.is_active or voice.language.lower() != payload.language.lower() or voice.model_installation_id != model.id or model.runtime == "piper":
             raise AppError(ErrorCode.VALIDATION_ERROR, "Select an active voice matching the language.")
     workspace = await session.scalar(select(Workspace).limit(1))
     if workspace is None:
         raise NotFoundError("Workspace", "default")
+
+    if payload.project_id:
+        project = await session.get(Project, payload.project_id)
+        if not project or project.owner_id != user.id or project.is_archived:
+            raise AppError(ErrorCode.FORBIDDEN, "Project unavailable.", status_code=403)
+        workspace = await session.get(Workspace, project.workspace_id)
 
     job = GenerationJob(
         workspace_id=workspace.id,
@@ -109,13 +117,14 @@ async def submit_generation(
 async def list_generations(
     limit: int = 50,
     offset: int = 0,
-    _: User = Depends(current_user),
+    user: User = Depends(current_user),
     session: AsyncSession = Depends(db_session),
 ) -> list[GenerationJobOut]:
 
     rows = (
         await session.scalars(
             job_query()
+            .where(GenerationJob.created_by_user_id == user.id)
             .order_by(GenerationJob.created_at.desc())
             .limit(limit)
             .offset(offset)
@@ -131,12 +140,12 @@ async def list_generations(
 @router.get("/{job_id}", response_model=GenerationJobOut)
 async def get_generation(
     job_id: uuid.UUID,
-    _: User = Depends(current_user),
+    user: User = Depends(current_user),
     session: AsyncSession = Depends(db_session),
 ) -> GenerationJobOut:
 
     job = await session.scalar(
-        job_query().where(GenerationJob.id == job_id)
+        job_query().where(GenerationJob.id == job_id, GenerationJob.created_by_user_id == user.id)
     )
 
     if job is None:
@@ -148,12 +157,12 @@ async def get_generation(
 @router.post("/{job_id}/cancel", response_model=GenerationJobOut)
 async def cancel_generation(
     job_id: uuid.UUID,
-    _: User = Depends(current_user),
+    user: User = Depends(current_user),
     session: AsyncSession = Depends(db_session),
 ) -> GenerationJobOut:
 
     job = await session.scalar(
-        job_query().where(GenerationJob.id == job_id)
+        job_query().where(GenerationJob.id == job_id, GenerationJob.created_by_user_id == user.id)
     )
 
     if job is None:
@@ -177,7 +186,7 @@ async def cancel_generation(
 
     # Reload relationships after commit.
     result = await session.scalar(
-        job_query().where(GenerationJob.id == job_id)
+        job_query().where(GenerationJob.id == job_id, GenerationJob.created_by_user_id == user.id)
     )
 
     if result is None:

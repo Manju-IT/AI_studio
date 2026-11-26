@@ -493,17 +493,25 @@ async def run_benchmark(
 
     manager = ModelManager(registry)
 
-    await manager.start()
+    from app.services.jobs.worker_lock import worker_lock
+    from app.core.config import get_settings
+    with worker_lock(get_settings().temp_dir / 'worker.lock') as acquired:
+        if not acquired:
+            raise AppError(ErrorCode.VALIDATION_ERROR, 'Stop the inference supervisor before benchmarking.', status_code=409)
+        with worker_lock(get_settings().temp_dir / 'heavy_child.lock') as free:
+            if not free:
+                raise AppError(ErrorCode.VALIDATION_ERROR, 'Heavy inference is still running.', status_code=409)
+            await manager.start()
 
-    try:
-        results = await run_benchmarks(
-            manager,
-            payload.manifest_id,
-            samples=samples,
-            include_cold_start=payload.include_cold_start,
-        )
-    finally:
-        await manager.stop()
+            try:
+                results = await run_benchmarks(
+                    manager,
+                    payload.manifest_id,
+                    samples=samples,
+                    include_cold_start=payload.include_cold_start,
+                )
+            finally:
+                await manager.stop()
 
     # Persist benchmark results.
     benchmark_rows: list[ModelBenchmark] = []

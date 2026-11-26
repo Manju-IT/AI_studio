@@ -26,7 +26,7 @@
         "it"
     ],
     "license": "Apache-2.0",
-    "source_repository": "https://modelscope.cn/models/Qwen/Qwen3-TTS-12Hz-0.6B-Base",
+    "source_repository": "https://huggingface.co/yunfengwang/Qwen3-TTS-12Hz-0.6B-Base-MNN",
     "memory_estimate_mb": 2200,
     "max_concurrent_jobs": 1,
     "extra": {

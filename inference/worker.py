@@ -13,6 +13,7 @@ Runs a persistent loop that:
 from __future__ import annotations
 
 import asyncio
+from inference.voice_assets import usable, profile_path
 import os
 import signal
 import sys
@@ -34,6 +35,7 @@ from app.models.voice import Voice
 from app.services.audio.assets import create_audio_asset
 from app.services.audio.chunker import chunk_text, merge_wav_files
 from app.services.jobs.recovery import recover_orphaned_jobs
+from app.services.jobs.worker_lock import worker_lock
 from inference.contracts.types import Capability, TTSRequest
 from inference.manager.loader import ModelLifecycleError, ModelManager
 from inference.manager.registry import ManifestRegistry
@@ -195,6 +197,8 @@ async def _load_job_context(job_id: uuid.UUID) -> _JobContext | None:
             if job.voice_id
             else None
         )
+        if job.voice_id and (voice is None or not voice.is_active or not usable(voice, job.created_by_user_id, installation) or voice.owner_id not in (None, job.created_by_user_id)):
+            raise RuntimeError("Voice is unavailable or has not been integrated for synthesis.")
         return _JobContext(
             job_id=job.id,
             workspace_id=job.workspace_id,
@@ -203,7 +207,7 @@ async def _load_job_context(job_id: uuid.UUID) -> _JobContext | None:
             text=job.text,
             language=job.language,
             voice_id=job.voice_id,
-            voice_identifier=voice.name if voice else None,
+            voice_identifier=(str(profile_path(voice.id).resolve()) if voice.source == "cloned" else voice.name) if voice else None,
             project_id=job.project_id,
             settings=dict(job.settings or {}),
             is_long_form=job.is_long_form,
@@ -220,7 +224,7 @@ async def _fail_job(job_id: uuid.UUID, code: str, message: str) -> None:
                 job.status = "failed"
                 job.error_code = code
                 job.error_message = message[:2000]
-                job.finished_at = job.updated_at
+                job.finished_at = datetime.now(timezone.utc)
 
 
 async def _complete_job(job_id: uuid.UUID, asset_id: uuid.UUID, duration: float) -> None:
@@ -231,6 +235,7 @@ async def _complete_job(job_id: uuid.UUID, asset_id: uuid.UUID, duration: float)
             )
             if job is not None:
                 job.status = "completed"
+                job.finished_at = datetime.now(timezone.utc)
                 job.audio_asset_id = asset_id
                 job.duration_seconds = duration
                 job.progress_current = job.progress_total
@@ -244,6 +249,7 @@ async def _cancel_job(job_id: uuid.UUID) -> None:
             )
             if job is not None:
                 job.status = "cancelled"
+                job.finished_at = datetime.now(timezone.utc)
 
 
 async def _run_with_timeout(
@@ -274,10 +280,8 @@ async def _run_with_timeout(
             f"{label} exceeded {timeout:.0f}s wall-clock limit. "
             "The worker will restart to clear the hung thread.",
         )
-        if settings.inference_worker_restart_on_timeout:
-            # A non-zero exit is the only reliable way to free a stuck thread.
-            os._exit(1)
-        raise
+        # A non-zero exit is the only reliable way to free a stuck thread.
+        os._exit(1)
 
 
 async def _run_single(ctx: _JobContext, manager: ModelManager) -> None:
@@ -533,11 +537,20 @@ async def main() -> None:
     settings.ensure_dirs()
 
     try:
-        recovery = await recover_orphaned_jobs(force=False)
+        recovery = await recover_orphaned_jobs(force=True)
         log.info("worker_startup_recovery", **recovery)
     except Exception as exc:
         log.warning("worker_startup_recovery_failed", error=str(exc))
+        raise
 
+    from app.services.jobs.local_queue import recover, pending
+    from inference.local_jobs import process
+    while True:
+        with worker_lock(settings.temp_dir / 'heavy_child.lock') as free:
+            if free:
+                recover()
+                break
+        await asyncio.sleep(1)
     _cleanup_stale_temp()
 
     # A process restart loses all in-memory models. Clear stale states.
@@ -570,9 +583,28 @@ async def main() -> None:
     signal.signal(signal.SIGINT, _on_signal)
     signal.signal(signal.SIGTERM, _on_signal)
 
+    async def heartbeat_loop():
+        while True:
+            _write_heartbeat()
+            await asyncio.sleep(2)
+
+    heartbeat_task = asyncio.create_task(heartbeat_loop())
+    local_streak = 0
     try:
         while not stop_event.is_set():
             _write_heartbeat()
+            with worker_lock(settings.temp_dir / 'heavy_child.lock') as free:
+                child_busy = not free
+            if child_busy:
+                await asyncio.sleep(1)
+                continue
+            local = pending()
+            if local is not None and local_streak < 1:
+                local_streak += 1
+                await manager.unload()
+                await _sync_model_state(manager)
+                await process(*local)
+                continue
             try:
                 await _process_model_commands(manager)
                 await _sync_model_state(manager)
@@ -585,7 +617,12 @@ async def main() -> None:
                 await asyncio.sleep(settings.inference_worker_poll_seconds)
                 continue
 
+            local_streak = 0
+            if job_id is None and local is not None:
+                continue
             if job_id is None:
+                await manager.unload_if_idle()
+                await _sync_model_state(manager)
                 try:
                     await asyncio.wait_for(
                         stop_event.wait(), timeout=settings.inference_worker_poll_seconds
@@ -595,15 +632,25 @@ async def main() -> None:
                 continue
 
             await _process_job(job_id, manager)
+            manager.touch()
             await _sync_model_state(manager)
     finally:
+        heartbeat_task.cancel()
+        await asyncio.gather(heartbeat_task, return_exceptions=True)
         log.info("worker_shutdown")
         await manager.stop()
 
 
-def run() -> None:
+def run() -> int | None:
     try:
-        asyncio.run(main())
+        with worker_lock(Path(get_settings().temp_dir) / "worker.lock") as acquired:
+            if not acquired:
+                print("Another inference worker is active.", flush=True)
+                return 73
+            try:
+                asyncio.run(main())
+            finally:
+                (Path(get_settings().temp_dir) / "worker_heartbeat").unlink(missing_ok=True)
     except KeyboardInterrupt:
         pass
 

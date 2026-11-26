@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette import EventSourceResponse, JSONServerSentEvent
 
-from app.api.deps import current_user, db_session
+from app.api.deps import admin_user, current_user, db_session
 from app.core.exceptions import AppError, ErrorCode, NotFoundError
 from app.models.job import GenerationChunk, GenerationJob
 from app.models.user import User, Workspace
@@ -23,10 +23,10 @@ TERMINAL = {"completed", "failed", "cancelled"}
 @router.get("/{job_id}", response_model=GenerationJobOut)
 async def get_job(
     job_id: uuid.UUID,
-    _: User = Depends(current_user),
+    user: User = Depends(current_user),
     session: AsyncSession = Depends(db_session),
 ) -> GenerationJobOut:
-    job = await session.scalar(select(GenerationJob).where(GenerationJob.id == job_id))
+    job = await session.scalar(select(GenerationJob).where(GenerationJob.id == job_id, GenerationJob.created_by_user_id == user.id))
     if job is None:
         raise NotFoundError("GenerationJob", str(job_id))
     return GenerationJobOut.model_validate(job)
@@ -35,10 +35,10 @@ async def get_job(
 @router.get("/{job_id}/chunks", response_model=list[GenerationChunkOut])
 async def list_chunks(
     job_id: uuid.UUID,
-    _: User = Depends(current_user),
+    user: User = Depends(current_user),
     session: AsyncSession = Depends(db_session),
 ) -> list[GenerationChunkOut]:
-    job = await session.scalar(select(GenerationJob).where(GenerationJob.id == job_id))
+    job = await session.scalar(select(GenerationJob).where(GenerationJob.id == job_id, GenerationJob.created_by_user_id == user.id))
     if job is None:
         raise NotFoundError("GenerationJob", str(job_id))
     rows = (
@@ -58,7 +58,7 @@ async def retry_job(
     session: AsyncSession = Depends(db_session),
 ) -> GenerationJobOut:
     """Create a new job that copies the parameters of a failed or cancelled one."""
-    original = await session.scalar(select(GenerationJob).where(GenerationJob.id == job_id))
+    original = await session.scalar(select(GenerationJob).where(GenerationJob.id == job_id, GenerationJob.created_by_user_id == user.id))
     if original is None:
         raise NotFoundError("GenerationJob", str(job_id))
     if original.status not in {"failed", "cancelled"}:
@@ -69,8 +69,6 @@ async def retry_job(
         )
 
     workspace = await session.scalar(select(Workspace).where(Workspace.id == original.workspace_id))
-    if workspace is None:
-        workspace = await session.scalar(select(Workspace).limit(1))
     if workspace is None:
         raise NotFoundError("Workspace", "default")
 
@@ -95,7 +93,7 @@ async def retry_job(
 
 
 @router.post("/recover")
-async def trigger_recovery(_: User = Depends(current_user)) -> dict[str, int]:
+async def trigger_recovery(user: User = Depends(admin_user)) -> dict[str, int]:
     """Requeue orphaned jobs. Safe to call at any time; no-op if a worker is alive."""
     return await recover_orphaned_jobs(force=False)
 
@@ -104,7 +102,7 @@ async def trigger_recovery(_: User = Depends(current_user)) -> dict[str, int]:
 async def job_events(
     job_id: uuid.UUID,
     request: Request,
-    _: User = Depends(current_user),
+    user: User = Depends(current_user),
 ) -> EventSourceResponse:
     async def event_stream():
         from app.db.session import SessionFactory
@@ -114,7 +112,7 @@ async def job_events(
                 break
             async with SessionFactory() as session:
                 job = await session.scalar(
-                    select(GenerationJob).where(GenerationJob.id == job_id)
+                    select(GenerationJob).where(GenerationJob.id == job_id, GenerationJob.created_by_user_id == user.id)
                 )
                 if job is None:
                     yield JSONServerSentEvent(data={"error": "not_found"})

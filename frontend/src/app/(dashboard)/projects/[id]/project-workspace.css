@@ -1,0 +1,391 @@
+.pe-workspace {
+    display: grid;
+    gap: 22px;
+    padding-bottom: 48px;
+    min-width: 0;
+}
+
+/* ================================
+   HERO SECTION
+================================ */
+
+.pe-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(220px, 1fr);
+    gap: 30px;
+    align-items: center;
+    padding: clamp(22px, 4vw, 52px);
+    border: 1px solid #e5dac9;
+    border-radius: 26px;
+    background:
+        radial-gradient(ellipse at top right, #ecd6b4, transparent 75%),
+        #fffdf8;
+    color: #182524;
+}
+
+.pe-hero h1 {
+    font-size: clamp(28px, 4vw, 48px);
+    line-height: 1.12;
+    letter-spacing: -.045em;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+    margin: 12px 0;
+}
+
+.pe-hero p {
+    color: #62685f;
+}
+
+.pe-kicker,
+.pe-hero .pe-kicker {
+    font-size: 10px;
+    letter-spacing: .18em;
+    font-weight: 700;
+    color: #946021;
+    margin: 14px 0 8px;
+}
+
+/* ================================
+   SIGNAL / WAVEFORM
+================================ */
+
+.pe-signal {
+    background: #182524;
+    color: #e4b977;
+    border-radius: 20px;
+    padding: 22px;
+    box-shadow: 0 18px 40px #18252422;
+    transform: rotate(-2deg);
+}
+
+.pe-signal small {
+    font-size: 10px;
+    letter-spacing: .13em;
+}
+
+.pe-signal-bars {
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin: 12px 0;
+}
+
+.pe-signal-bar {
+    display: block;
+    flex: 1;
+    min-width: 2px;
+    max-width: 8px;
+    height: 40%;
+    border-radius: 6px;
+    background: #dca35d;
+    animation: pe-wave 2.4s ease-in-out infinite alternate;
+}
+
+/* Different waveform heights */
+
+.pe-signal-bar:nth-child(5n + 1) {
+    height: 35%;
+}
+
+.pe-signal-bar:nth-child(5n + 2) {
+    height: 65%;
+}
+
+.pe-signal-bar:nth-child(5n + 3) {
+    height: 90%;
+}
+
+.pe-signal-bar:nth-child(5n + 4) {
+    height: 50%;
+}
+
+.pe-signal-bar:nth-child(5n) {
+    height: 25%;
+}
+
+/* Waveform animation */
+
+@keyframes pe-wave {
+    from {
+        transform: scaleY(1);
+        opacity: 1;
+    }
+
+    to {
+        transform: scaleY(.45);
+        opacity: .6;
+    }
+}
+
+/* ================================
+   STATISTICS
+================================ */
+
+.pe-stats {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    border: 1px solid #e5dfd4;
+    border-radius: 18px;
+    background: #fffefa;
+    padding: 18px;
+    color: #182524;
+}
+
+.pe-stats>div {
+    padding: 6px 16px;
+    border-right: 1px solid #e5dfd4;
+}
+
+.pe-stats>div:last-child {
+    border: 0;
+}
+
+.pe-stats small {
+    display: block;
+    color: #6b6b64;
+    font-size: 12px;
+}
+
+.pe-stats strong {
+    display: block;
+    font-size: 30px;
+    font-weight: 600;
+}
+
+/* ================================
+   TOOLBAR
+================================ */
+
+.pe-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ================================
+   PANELS
+================================ */
+
+.pe-panel {
+    border: 1px solid #e5dfd4;
+    border-radius: 20px;
+    padding: 22px;
+    background: #fffefa;
+    color: #182524;
+    min-width: 0;
+    box-shadow: 0 6px 22px #18252406;
+}
+
+.pe-panel h2 {
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -.025em;
+}
+
+.pe-panel progress {
+    accent-color: #ad793b;
+    height: 8px;
+}
+
+/* ================================
+   SCRIPT GRID
+================================ */
+
+.pe-grid {
+    display: grid;
+    grid-template-columns: minmax(270px, .8fr) minmax(0, 1.5fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.pe-library {
+    display: grid;
+    gap: 14px;
+}
+
+.pe-detail {
+    min-width: 0;
+}
+
+/* ================================
+   FILTERS AND PAGINATION
+================================ */
+
+.pe-filters,
+.pe-pagination {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+/* ================================
+   SEGMENT LIST
+================================ */
+
+.pe-list {
+    display: grid;
+    gap: 8px;
+    max-height: 560px;
+    overflow: auto;
+}
+
+.pe-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    padding: 13px;
+    border: 1px solid #e5dfd4;
+    border-radius: 12px;
+    background: #fff;
+    min-width: 0;
+    transition: background .2s, border-color .2s;
+}
+
+.pe-row:hover,
+.pe-selected {
+    background: #f7eddd;
+    border-color: #c9a577;
+}
+
+.pe-number {
+    font-size: 12px;
+    color: #946021;
+    font-weight: 700;
+}
+
+.pe-row-copy {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: 4px;
+}
+
+.pe-row-copy strong,
+.pe-row-copy>span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pe-row-copy>span {
+    font-size: 12px;
+    color: #62685f;
+}
+
+/* ================================
+   JOB STATUS
+================================ */
+
+.pe-status {
+    font-size: 11px;
+    text-transform: capitalize;
+    color: #946021;
+}
+
+.pe-completed {
+    color: #23734e;
+}
+
+.pe-failed,
+.pe-cancelled {
+    color: #a33c35;
+}
+
+/* ================================
+   SCRIPT EDITOR
+================================ */
+
+.pe-script {
+    min-height: 220px;
+    resize: vertical;
+    line-height: 1.75;
+}
+
+.pe-editor {
+    overflow-wrap: anywhere;
+}
+
+.pe-editor input,
+.pe-editor select {
+    max-width: 100%;
+}
+
+/* ================================
+   IMPORT SECTION
+================================ */
+
+.pe-import {
+    border-top: 1px solid #e5dfd4;
+    padding-top: 16px;
+}
+
+/* ================================
+   ACCESSIBILITY
+================================ */
+
+.pe-workspace button:focus-visible {
+    outline: 2px solid #946021;
+    outline-offset: 2px;
+}
+
+.pe-workspace button:disabled {
+    cursor: not-allowed;
+}
+
+.pe-workspace button.bg-accent {
+    background: #182524;
+    color: white;
+}
+
+/* ================================
+   RESPONSIVE DESIGN
+================================ */
+
+@media (max-width: 850px) {
+
+    .pe-grid,
+    .pe-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .pe-signal {
+        transform: none;
+    }
+
+    .pe-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .pe-stats>div {
+        border: 0;
+    }
+
+    .pe-panel {
+        padding: 16px;
+    }
+
+    .pe-list {
+        max-height: 400px;
+    }
+}
+
+/* ================================
+   REDUCED MOTION
+================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    .pe-signal-bar {
+        animation: none;
+    }
+
+    .pe-row {
+        transition: none;
+    }
+}

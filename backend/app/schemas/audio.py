@@ -40,3 +40,9 @@ class MergeRequest(BaseModel):
 class ExportRequest(BaseModel):
     audio_asset_id: uuid.UUID
     format: str = Field(default="mp3", pattern="^(wav|mp3)$")
+
+class ProcessRequest(BaseModel):
+    audio_asset_id: uuid.UUID
+    operation: str = Field(pattern='^(normalize|gain|fade_in|fade_out|trim_silence|mono|stereo)$')
+    value: float = Field(default=0, allow_inf_nan=False)
+    title: str | None = Field(default=None, max_length=200)

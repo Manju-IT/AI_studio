@@ -50,12 +50,18 @@ const menuGroups: { title: string; items: NavItem[] }[] = [
     {
         title: 'TOOLS & MODELS',
         items: [
+            { href: '/transcriptions', label: 'Speech to text', icon: Mic },
             { href: '/audio-tools', label: 'Audio Tools', icon: Scissors },
             { href: '/models', label: 'Models', icon: Boxes },
             { href: '/models/benchmarks', label: 'Benchmarks', icon: BarChart3 },
             { href: '/jobs', label: 'Generation history', icon: ListChecks },
+            { href: '/queue', label: 'Job queue', icon: ListChecks },
             { href: '/audio-library', label: 'Audio library', icon: AudioLines },
         ],
+    },
+    {
+        title: 'DEVELOPERS',
+        items: [{ href: '/developer', label: 'API Keys', icon: ListChecks }],
     },
     {
         title: 'ADMINISTRATION',

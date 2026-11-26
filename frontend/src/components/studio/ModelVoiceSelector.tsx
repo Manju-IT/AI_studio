@@ -34,14 +34,14 @@ export function ModelVoiceSelector({
     const compatibleVoices = useMemo(() => {
         if (!selectedModel) return []
         const allowed = new Set(selectedModel.definition.languages.map((l) => l.toLowerCase()))
-        return voices.filter((v) => allowed.has(v.language.toLowerCase()))
-    }, [voices, selectedModel])
+        return voices.filter((v) => v.is_active && (v.source === "builtin" || v.synthesis_ready === true) && selectedModel.runtime !== "piper" && v.model_installation_id === selectedModel.id && allowed.has(v.language.toLowerCase()) && v.language.toLowerCase() === language.toLowerCase())
+    }, [voices, selectedModel, language])
 
     const speechModels = useMemo(
         () =>
             models.filter((m) => {
                 const caps = m.definition.capabilities as Record<string, unknown> | undefined
-                return m.loading_state !== 'error' && (caps?.text_to_speech !== false)
+                return m.installation_state !== 'invalid' && m.generation_contract?.available === true && (caps?.text_to_speech !== false)
             }),
         [models],
     )

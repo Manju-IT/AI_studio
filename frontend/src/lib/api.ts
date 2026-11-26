@@ -145,6 +145,7 @@ export const api = {
             }),
     },
     audio: {
+        process: (payload: {audio_asset_id: string; operation: string; value: number}) => request<AudioAssetOut>('/api/v1/audio/process', {method: 'POST', body: JSON.stringify(payload)}),
         list: (limit = 50, projectId?: string, offset = 0) => {
             const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
             if (projectId) params.set('project_id', projectId)
@@ -177,6 +178,12 @@ export const api = {
             }),
     },
     projects: {
+        importDubbing: (transcription_id: string, name: string, language: string) => request<ProjectOut>(`/api/v1/projects/dubbing/import`, {method: "POST", body: JSON.stringify({transcription_id,name,language})}),
+        script: (id: string) => request<import('@/types/project-editor').Script>(`/api/v1/projects/${id}/script`),
+        saveScript: (id: string, payload: import('@/types/project-editor').Script) => request<import('@/types/project-editor').Script>(`/api/v1/projects/${id}/script`, {method:'PUT', body:JSON.stringify(payload)}),
+        generateBatch: (id: string, revision: number, retryOnly = false) => request<import('@/types/project-editor').Script>(`/api/v1/projects/${id}/script/batch?revision=${revision}&retry_only=${retryOnly}`, {method:'POST'}),
+        generateSegment: (id: string, segment: string, revision: number) => request<import('@/types/project-editor').Script>(`/api/v1/projects/${id}/script/${segment}/generate?revision=${revision}`, {method:'POST'}),
+        exportScript: (id: string, revision: number, aligned = false) => request<AudioAssetOut>(`/api/v1/projects/${id}/script/export?revision=${revision}&aligned=${aligned}`, {method:'POST'}),
         list: () => request<ProjectOut[]>('/api/v1/projects'),
         get: (projectId: string) => request<ProjectOut>(`/api/v1/projects/${projectId}`),
         create: (payload: { name: string; description?: string }) =>
@@ -199,6 +206,8 @@ export const api = {
     },
 
     voices: {
+        extractionStatus: (id: string) => request<{status: string; error: string | null}>(`/api/v1/voices/${id}/extract`),
+        extract: (id: string) => request<{status: string; error: string | null}>(`/api/v1/voices/${id}/extract`, { method: "POST" }),
         list: (language?: string) => {
             const qs = language ? `?language=${encodeURIComponent(language)}` : ''
             return request<VoiceOut[]>(`/api/v1/voices${qs}`)

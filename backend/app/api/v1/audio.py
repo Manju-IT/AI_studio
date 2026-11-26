@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+import asyncio
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Query
@@ -13,7 +14,7 @@ from app.core.config import get_settings
 from app.core.exceptions import AppError, ErrorCode, NotFoundError
 from app.models.audio import AudioAsset
 from app.models.user import User
-from app.schemas.audio import AudioAssetOut, ExportRequest, MergeRequest, TrimRequest
+from app.schemas.audio import AudioAssetOut, ExportRequest, MergeRequest, TrimRequest, ProcessRequest
 from app.services.audio.assets import create_audio_asset
 from app.services.audio.ffmpeg import (
     export_audio_to_format,
@@ -48,10 +49,10 @@ async def list_audio(
 @router.get("/{asset_id}", response_model=AudioAssetOut)
 async def get_audio(
     asset_id: uuid.UUID,
-    _: User = Depends(current_user),
+    user: User = Depends(current_user),
     session: AsyncSession = Depends(db_session),
 ) -> AudioAssetOut:
-    asset = await session.scalar(select(AudioAsset).where(AudioAsset.id == asset_id))
+    asset = await session.scalar(select(AudioAsset).where(AudioAsset.id == asset_id, AudioAsset.owner_id == user.id))
     if asset is None:
         raise NotFoundError("AudioAsset", str(asset_id))
     return AudioAssetOut.model_validate(asset)
@@ -60,10 +61,10 @@ async def get_audio(
 @router.get("/{asset_id}/download")
 async def download_audio(
     asset_id: uuid.UUID,
-    _: User = Depends(current_user),
+    user: User = Depends(current_user),
     session: AsyncSession = Depends(db_session),
 ) -> FileResponse:
-    asset = await session.scalar(select(AudioAsset).where(AudioAsset.id == asset_id))
+    asset = await session.scalar(select(AudioAsset).where(AudioAsset.id == asset_id, AudioAsset.owner_id == user.id))
     if asset is None:
         raise NotFoundError("AudioAsset", str(asset_id))
     path = Path(asset.storage_path)
@@ -78,7 +79,7 @@ async def trim_audio(
     user: User = Depends(current_user),
     session: AsyncSession = Depends(db_session),
 ) -> AudioAssetOut:
-    source = await session.scalar(select(AudioAsset).where(AudioAsset.id == payload.audio_asset_id))
+    source = await session.scalar(select(AudioAsset).where(AudioAsset.id == payload.audio_asset_id, AudioAsset.owner_id == user.id))
     if source is None:
         raise NotFoundError("AudioAsset", str(payload.audio_asset_id))
     result = await trim_audio_service(
@@ -102,7 +103,7 @@ async def merge_audio(
     session: AsyncSession = Depends(db_session),
 ) -> AudioAssetOut:
     assets = (
-        await session.scalars(select(AudioAsset).where(AudioAsset.id.in_(payload.audio_asset_ids)))
+        await session.scalars(select(AudioAsset).where(AudioAsset.id.in_(payload.audio_asset_ids), AudioAsset.owner_id == user.id))
     ).all()
     if len(assets) != len(payload.audio_asset_ids):
         raise NotFoundError("AudioAsset", "one or more ids not found")
@@ -133,12 +134,12 @@ async def export_audio(
     user: User = Depends(current_user),
     session: AsyncSession = Depends(db_session),
 ) -> AudioAssetOut:
-    source = await session.scalar(select(AudioAsset).where(AudioAsset.id == payload.audio_asset_id))
+    source = await session.scalar(select(AudioAsset).where(AudioAsset.id == payload.audio_asset_id, AudioAsset.owner_id == user.id))
     if source is None:
         raise NotFoundError("AudioAsset", str(payload.audio_asset_id))
 
     settings = get_settings()
-    out_path = settings.export_dir / f"export_{source.id.hex}.{payload.format}"
+    out_path = settings.export_dir / f"export_{uuid.uuid4().hex}.{payload.format}"
     await export_audio_to_format(
         source=Path(source.storage_path),
         target_format=payload.format,
@@ -154,4 +155,28 @@ async def export_audio(
         original_filename=f"{source.id.hex}.{payload.format}",
     )
     await session.commit()
+    return AudioAssetOut.model_validate(asset)
+
+@router.post("/process", response_model=AudioAssetOut)
+async def process_audio(payload: ProcessRequest, user: User = Depends(current_user), session: AsyncSession = Depends(db_session)):
+    from app.services.audio.postprocess import process
+    limits = {"normalize": (-30, 0), "gain": (-30, 12), "fade_in": (0.01, 10), "fade_out": (0.01, 10), "trim_silence": (-80, -10), "mono": (0, 0), "stereo": (0, 0)}
+    lo, hi = limits[payload.operation]
+    if not lo <= payload.value <= hi:
+        raise AppError(ErrorCode.VALIDATION_ERROR, "Invalid processing value.")
+    source = await session.scalar(select(AudioAsset).where(AudioAsset.id == payload.audio_asset_id, AudioAsset.owner_id == user.id))
+    if source is None:
+        raise NotFoundError("AudioAsset", str(payload.audio_asset_id))
+    output = get_settings().generated_audio_dir / f"processed_{uuid.uuid4().hex}.wav"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        await asyncio.to_thread(process, Path(source.storage_path), output, payload.operation, payload.value)
+        asset = await create_audio_asset(session, workspace_id=source.workspace_id, owner_id=user.id, project_id=source.project_id, source_path=output, title=payload.title or f"{source.title or 'Audio'} - {payload.operation}")
+        await session.commit()
+    except (ValueError, OSError, RuntimeError) as exc:
+        output.unlink(missing_ok=True)
+        raise AppError(ErrorCode.INVALID_AUDIO, "Audio processing failed: " + str(exc)[:200], status_code=422) from exc
+    except Exception:
+        output.unlink(missing_ok=True)
+        raise
     return AudioAssetOut.model_validate(asset)

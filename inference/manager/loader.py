@@ -44,12 +44,12 @@ class ModelManager:
         self._lock = asyncio.Lock()
         self._idle_task: asyncio.Task[None] | None = None
         self._idle_timeout = float(
-            getattr(get_settings(), "model_idle_unload_seconds", 600) or 600
+            getattr(get_settings(), "model_idle_unload_seconds", 60) or 60
         )
 
     async def start(self) -> None:
         self._registry.scan()
-        self._idle_task = asyncio.create_task(self._idle_watch(), name="model-idle-watch")
+        # Idle unloading is polled only between jobs by the worker.
 
     async def stop(self) -> None:
         if self._idle_task is not None:
@@ -132,6 +132,10 @@ class ModelManager:
         available_mb = psutil.virtual_memory().available // (1024 * 1024)
         # 20% headroom above the estimate protects against runtime overhead.
         required_mb = int(manifest.memory_estimate_mb * 1.2)
+        if manifest.runtime.value == "qwen_mnn":
+            required_mb = max(required_mb, 8800)
+            if available_mb < 10240:
+                raise ModelLifecycleError("Qwen cold load requires at least 10 GiB available RAM on this configuration.")
         if available_mb < required_mb:
             raise ModelLifecycleError(
                 f"Not enough RAM for '{manifest.id}': need ~{required_mb} MB, "
@@ -144,16 +148,10 @@ class ModelManager:
                 f"inference budget of {budget} MB. Raise MAX_RAM_MB_FOR_INFERENCE or choose a smaller model."
             )
 
-    async def _idle_watch(self) -> None:
-        try:
-            while True:
-                await asyncio.sleep(30)
-                if self._current is None:
-                    continue
-                idle = time.time() - self._current.last_used_at
-                if idle < self._idle_timeout:
-                    continue
-                log.info("model_idle_unload", manifest_id=self._current.manifest.id, idle=idle)
-                await self.unload()
-        except asyncio.CancelledError:
-            return
+    def touch(self) -> None:
+        if self._current is not None:
+            self._current.last_used_at = time.time()
+
+    async def unload_if_idle(self) -> None:
+        if self._current and time.time() - self._current.last_used_at >= self._idle_timeout:
+            await self.unload()

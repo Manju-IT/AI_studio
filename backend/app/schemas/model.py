@@ -37,6 +37,7 @@ class ModelInstallationOut(ORMModel):
     last_loaded_at: datetime | None
     is_active_model: bool
     definition: ModelDefinitionOut
+    generation_contract: dict[str, Any] = Field(default_factory=dict)
 
 
 class ModelRegisterRequest(BaseModel):

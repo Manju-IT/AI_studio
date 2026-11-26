@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { api, ApiError } from '@/lib/api'
 import { logout } from '@/lib/auth'
@@ -9,6 +9,7 @@ import type { UserPublic } from '@/types/api'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter()
+    const pathname = usePathname()
     const [user, setUser] = useState<UserPublic | null>(null)
     const [loading, setLoading] = useState(true)
 
@@ -21,11 +22,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             })
             .catch((error: unknown) => {
                 if (cancelled) return
-                if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+
+                if (
+                    error instanceof ApiError &&
+                    (error.status === 401 || error.status === 403)
+                ) {
                     router.replace('/login')
-                } else {
-                    console.error('Unable to load workspace session:', error)
+                    return
                 }
+
+                console.error(
+                    'Unable to load workspace session:',
+                    error
+                )
             })
             .finally(() => {
                 if (!cancelled) setLoading(false)
@@ -41,8 +50,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 sessionLoading={loading}
                 onSignOut={logout}
             />
-            <main className="mx-auto min-w-0 w-full max-w-[1500px] px-4 pb-10 pt-[104px] sm:px-6 sm:pt-[112px] lg:px-8">
-                {children}
+            <main className="mx-auto min-w-0 w-full max-w-[1500px] px-4 pb-10 pt-[124px] sm:px-6 sm:pt-[136px] lg:px-8">
+                <div key={pathname} className={pathname === "/" ? "corp-content" : "corp-content corp-workspace"}>{children}</div>
             </main>
         </div>
     )

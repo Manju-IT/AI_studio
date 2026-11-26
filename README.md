@@ -46,3 +46,9 @@ python scripts/bootstrap_admin.py \
   --email admin@example.com \
   --password "StudioAdmin@2026" \
   --name "Studio Admin"
+
+
+
+alembic -c alembic/alembic.ini upgrade head
+
+powershell -NoProfile -ExecutionPolicy Bypass -File .\start.ps1

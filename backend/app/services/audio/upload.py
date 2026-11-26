@@ -13,6 +13,7 @@ so the reference can be handed to the engine without further conversion.
 from __future__ import annotations
 
 import shutil
+import asyncio
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -88,7 +89,11 @@ def _inspect_and_normalize(source: Path, destination: Path) -> tuple[float, int,
             duration = len(fh) / fh.samplerate
             sr = fh.samplerate
             channels = fh.channels
+            if duration > MAX_DURATION_SECONDS or channels > 8 or sr > 192000:
+                raise AppError(ErrorCode.INVALID_AUDIO, "Reference exceeds decoding limits.", status_code=422)
             data = fh.read(dtype="float32")
+    except AppError:
+        raise
     except Exception as exc:
         if not _ffmpeg_available():
             raise AppError(
@@ -103,9 +108,10 @@ def _inspect_and_normalize(source: Path, destination: Path) -> tuple[float, int,
         temp_wav = source.with_suffix(".decoded.wav")
         try:
             subprocess.run(
-                [settings.ffmpeg_binary, "-y", "-i", str(source), str(temp_wav)],
+                [settings.ffmpeg_binary, "-nostdin", "-y", "-i", str(source), "-t", "61", "-ac", "1", "-ar", "24000", str(temp_wav)],
                 check=True,
                 capture_output=True,
+                timeout=60,
             )
             with sf.SoundFile(str(temp_wav)) as fh:
                 duration = len(fh) / fh.samplerate
@@ -135,6 +141,9 @@ def _inspect_and_normalize(source: Path, destination: Path) -> tuple[float, int,
 
     if data.ndim > 1:
         data = data.mean(axis=1)
+
+    if not np.isfinite(data).all() or float(np.sqrt(np.mean(data ** 2))) < 0.001:
+        raise AppError(ErrorCode.INVALID_AUDIO, "Reference is silent or invalid.", status_code=422)
 
     # Resample if needed (linear interpolation — sufficient for reference audio).
     if sr != NORMALIZED_SAMPLE_RATE:
@@ -178,14 +187,14 @@ async def save_reference_audio(
 
     max_bytes = settings.max_upload_mb * 1024 * 1024
     raw_path = settings.temp_dir / f"ref_{voice_id.hex}_{uuid.uuid4().hex}{suffix}"
-    normalized_path = settings.reference_audio_dir / str(voice_id) / "reference.wav"
+    normalized_path = settings.reference_audio_dir / str(voice_id) / f"reference_{uuid.uuid4().hex}.wav"
 
     try:
         written = await _save_stream(upload, raw_path, max_bytes)
         if written == 0:
             raise AppError(ErrorCode.INVALID_AUDIO, "Uploaded file is empty.", status_code=422)
 
-        duration, sr, channels, fmt = _inspect_and_normalize(raw_path, normalized_path)
+        duration, sr, channels, fmt = await asyncio.to_thread(_inspect_and_normalize, raw_path, normalized_path)
     finally:
         raw_path.unlink(missing_ok=True)
 
